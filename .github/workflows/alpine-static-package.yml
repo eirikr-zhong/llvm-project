@@ -2,8 +2,8 @@ name: Alpine Static LLVM Package
 
 on:
   push:
-    branches:
-      - main
+    tags:
+      - '*'
 
 permissions:
   contents: read
