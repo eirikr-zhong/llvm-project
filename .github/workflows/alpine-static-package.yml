@@ -2,11 +2,13 @@ name: Alpine Static LLVM Package
 
 on:
   push:
+    branches:
+      - main
     tags:
       - '*'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build-and-package:
@@ -66,9 +68,9 @@ jobs:
           set -eux
           git config --global --add safe.directory "${GITHUB_WORKSPACE}"
 
-      - name: Restore ccache cache
+      - name: Restore/Save ccache cache
         id: ccache-cache
-        uses: actions/cache/restore@v4
+        uses: actions/cache@v4
         with:
           path: ${{ env.CCACHE_DIR }}
           key: ccache-alpine-static-${{ runner.os }}-${{ env.LTO_MODE }}-${{ hashFiles('.github/workflows/alpine-static-package.yml') }}
@@ -133,13 +135,6 @@ jobs:
           set -eux
           ccache --show-stats || true
 
-      - name: Save ccache cache
-        if: always() && !cancelled()
-        uses: actions/cache/save@v4
-        with:
-          path: ${{ env.CCACHE_DIR }}
-          key: ${{ steps.ccache-cache.outputs.cache-primary-key }}
-
       - name: Install
         run: |
           set -eux
@@ -183,3 +178,13 @@ jobs:
           name: debug_symbols.tar.gz
           path: debug_symbols.tar.gz
           if-no-files-found: error
+
+      - name: Upload release assets
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          generate_release_notes: true
+          files: |
+            ${{ steps.deliverables.outputs.lldb_name }}
+            debug_symbols.tar.gz
